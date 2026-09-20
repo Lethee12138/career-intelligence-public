@@ -1,0 +1,12 @@
+{
+  "schema_version": "public-demo-1",
+  "source_scope": "SYNTHETIC",
+  "candidate_ref": "SYN-CANDIDATE-001",
+  "role_key": "SYNTHETIC:ExampleCompany:SYN-ROLE-001",
+  "evidence_refs": [
+    "SYN-EVIDENCE-001",
+    "SYN-EVIDENCE-002"
+  ],
+  "external_action": false,
+  "human_review_required": true
+}

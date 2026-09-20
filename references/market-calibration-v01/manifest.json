@@ -1,0 +1,19 @@
+{
+  "classification": "DATED DIRECTIONAL MARKET BENCHMARK",
+  "captured_date": "2026-09-13",
+  "source_provenance": "Public demo reference; original local storage and conversation provenance intentionally omitted.",
+  "artifacts": [
+    {
+      "file": "Salary_Calibration_Matrix_v0.1.csv",
+      "sha256": "efe3c4ee33980f95a67fcc31a845d4c5ec9948c25e1865fd38230ef0c3e81864",
+      "traceability_status": "DEMO_REFERENCE",
+      "limitations": "Dated directional context only; verify current role-level facts."
+    },
+    {
+      "file": "Benefits_Employment_Conditions_Matrix_v0.1.csv",
+      "sha256": "4266f1ea8244f7197a325036761667838e5a81b1603efc73daa250d795c790f4",
+      "traceability_status": "DEMO_REFERENCE",
+      "limitations": "Dated directional context only; verify current role-level facts."
+    }
+  ]
+}

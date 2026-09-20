@@ -1,0 +1,19 @@
+{
+  "evidence": [
+    {
+      "id": "SYN-EVIDENCE-001",
+      "project": "Synthetic Project Alpha",
+      "statement": "Mapped a fictional user problem into a testable workflow.",
+      "epistemic_status": "VERIFIED_FACT",
+      "source_scope": "SYNTHETIC"
+    },
+    {
+      "id": "SYN-EVIDENCE-002",
+      "project": "Synthetic Project Beta",
+      "statement": "Compared two fictional prototype iterations with a review checklist.",
+      "epistemic_status": "VERIFIED_FACT",
+      "source_scope": "SYNTHETIC"
+    }
+  ],
+  "boundary": "Synthetic demonstration only; never a candidate truth source."
+}

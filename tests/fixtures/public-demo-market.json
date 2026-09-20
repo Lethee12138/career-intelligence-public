@@ -1,0 +1,14 @@
+{
+  "market": "China",
+  "city": "Example City",
+  "role_family": "Product Discovery",
+  "as_of": "2026-09-13",
+  "source_scope": "SYNTHETIC",
+  "salary_range": "UNKNOWN",
+  "work_right": "VERIFY",
+  "sponsorship": "VERIFY",
+  "limitations": [
+    "No live market research",
+    "No legal verification"
+  ]
+}

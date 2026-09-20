@@ -1,0 +1,16 @@
+{
+  "candidate_id": "SYN-CANDIDATE-001",
+  "profile_ref": "SYNTHETIC_PROFILE_001",
+  "source_scope": "SYNTHETIC",
+  "capability_roots": [
+    "product discovery",
+    "research synthesis",
+    "workflow prototyping",
+    "communication"
+  ],
+  "evidence_refs": [
+    "SYN-EVIDENCE-001",
+    "SYN-EVIDENCE-002"
+  ],
+  "preferences_ref": "SYNTHETIC_PREFERENCES_001"
+}

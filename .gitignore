@@ -1,0 +1,24 @@
+# Environment and secrets
+.env
+.env.*
+*.key
+*.pem
+*.token
+secrets/
+private/
+local/
+
+# Dependencies
+node_modules/
+
+# OS files
+.DS_Store
+
+# Runtime output
+*.log
+logs/
+
+# Local development state
+runtime/
+.cache/
+.tmp/

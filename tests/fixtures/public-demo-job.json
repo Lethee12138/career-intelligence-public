@@ -1,0 +1,19 @@
+{
+  "role_key": "SYNTHETIC:ExampleCompany:SYN-ROLE-001",
+  "company": "Example Company",
+  "role_title": "Product Discovery Associate",
+  "employment_market": "China",
+  "country": "CN",
+  "city": "Example City",
+  "company_type": "Synthetic employer",
+  "official_job_id": "SYN-ROLE-001",
+  "source_url": "https://example.invalid/jobs/SYN-ROLE-001",
+  "source_level": "SYNTHETIC",
+  "actual_duties": [
+    "research user needs",
+    "map workflows",
+    "test a bounded prototype"
+  ],
+  "qualification": "VERIFY",
+  "candidate_status": "HUMAN_REVIEW_REQUIRED"
+}

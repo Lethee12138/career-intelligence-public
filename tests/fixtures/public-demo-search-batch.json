@@ -1,0 +1,16 @@
+{
+  "schema_version": "0.2.3",
+  "batch_id": "SYN-BATCH-001",
+  "source_scope": "SYNTHETIC",
+  "external_action": false,
+  "candidates": [
+    {
+      "candidate_id": "SYN-CANDIDATE-001",
+      "company": "Example Company",
+      "official_job_id": "SYN-ROLE-001",
+      "role": "Product Discovery Associate",
+      "location": "Example City",
+      "source_url": "https://example.invalid/jobs/SYN-ROLE-001"
+    }
+  ]
+}

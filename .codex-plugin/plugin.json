@@ -1,0 +1,18 @@
+{
+  "name": "career-intelligence",
+  "version": "0.2.7",
+  "description": "Evidence-first career intelligence for job discovery, role analysis, application preparation, job quality, and work-right checks.",
+  "author": {
+    "name": "Career Intelligence Contributors"
+  },
+  "interface": {
+    "displayName": "Career Intelligence",
+    "shortDescription": "Evidence-first career research toolkit",
+    "longDescription": "Use Career Intelligence for career direction, bounded public job discovery, JD analysis, candidate routing, application preparation, job quality, and work-right or sponsorship questions. Human review remains required before external action.",
+    "developerName": "Career Intelligence Contributors",
+    "category": "Productivity",
+    "capabilities": [
+      "Read"
+    ]
+  }
+}
