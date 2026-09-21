@@ -20,7 +20,8 @@ DETAILS = ('official_published_date', 'deadline', 'jd_ref', 'responsibilities', 
            'base_salary', 'guaranteed_cash', 'variable', 'benefits', 'workload_signals',
            'leave', 'hybrid', 'probation', 'stability_signals', 'role_family',
            'industry', 'ai_involvement', 'technical_depth_requirement', 'candidate_zone',
-           'matched_role_hypothesis', 'strongest_capability_match', 'strongest_evidence_refs', 'main_gaps')
+           'matched_role_hypothesis', 'strongest_capability_match', 'strongest_evidence_refs', 'main_gaps',
+           'why_matched')
 AI_INVOLVEMENT = {'NONE', 'AI-ENABLED', 'AI-CORE', 'AGENT-CORE'}
 TECHNICAL_DEPTH = {'LOW', 'MODERATE', 'HIGH', 'ENGINEERING-CORE'}
 CANDIDATE_ZONE = {'CORE_COMFORT', 'ADJACENT_GROWTH', 'STRATEGIC_STRETCH', 'CURRENTLY_TOO_FAR'}
@@ -32,6 +33,23 @@ def present(value):
 
 def url(value):
     return isinstance(value, str) and urlsplit(value).scheme in {'https', 'http'} and bool(urlsplit(value).netloc)
+
+
+def build_why_matched(candidate, screen=None):
+    """Assemble an additive explanation from supplied candidate fields only."""
+    screen = screen if isinstance(screen, dict) else {}
+    evidence_refs = candidate.get('strongest_evidence_refs')
+    if not present(evidence_refs):
+        evidence_refs = screen.get('evidence_refs', [])
+    return {
+        'capability': deepcopy(candidate.get('strongest_capability_match', 'UNKNOWN')),
+        'role_family': deepcopy(candidate.get('role_family', 'UNKNOWN')),
+        'market_title': deepcopy(candidate.get('role_title', 'UNKNOWN')),
+        'matched_role_hypothesis': deepcopy(candidate.get('matched_role_hypothesis', 'UNKNOWN')),
+        'evidence_refs': deepcopy(evidence_refs),
+        'responsibility_match': deepcopy(screen.get('responsibility_match', 'UNKNOWN')),
+        'gaps': deepcopy(candidate.get('main_gaps', 'UNKNOWN')),
+    }
 
 
 def make_handoff(discovery, search_id, created_at, pool=None, target_batch_size=30, executor='OTHER_SEARCH_EXECUTOR'):
@@ -53,7 +71,7 @@ def make_handoff(discovery, search_id, created_at, pool=None, target_batch_size=
     safe_pool = {k: deepcopy((pool or {}).get(k, 'UNKNOWN')) for k in ('pool_id', 'captured_at', 'company_constraints')}
     safe_pool['entries'] = [{k: deepcopy(e[k]) for k in IDENTITY + ('identity', 'business_unit', 'programme', 'pool_id', 'application_status', 'lane', 'queue_state') if k in e} for e in (pool or {}).get('entries', [])]
     coverage_plan = deepcopy(discovery.get('coverage_plan', {}))
-    return {'schema_version': '0.2.3', 'search_id': search_id, 'created_at': created_at,
+    return {'schema_version': '0.2.4', 'search_id': search_id, 'created_at': created_at,
             'executor': executor, 'market_scope': deepcopy(MARKETS), 'role_hypotheses': hypotheses,
             'location_scope': deepcopy(discovery.get('location_scope', ['China preferred cities', 'UK', 'Other opportunity-driven'])),
             'query_sets': queries, 'query_method': 'Combine title + responsibility/problem/output; negative terms are reviewed traps, not automatic exclusions',
@@ -299,6 +317,7 @@ def intake_batch(batch, as_of, mode='HISTORICAL_SNAPSHOT'):
         screen_ok = (review_bound(screen, selected.get('role_key'), as_of)
                      and isinstance(screen.get('dimensions'), dict)
                      and all(isinstance(screen.get(k), list) for k in ('evidence_refs','critical_unknowns','quality_observations')))
+        why_matched = build_why_matched(out, screen)
         if not isinstance(out['responsibilities'], list) or not out['responsibilities']:
             errors.append('actual responsibilities VERIFY')
         if not isinstance(out['requirements'], list) or not out['requirements'] or out['jd_ref'] == 'UNKNOWN':
@@ -328,6 +347,7 @@ def intake_batch(batch, as_of, mode='HISTORICAL_SNAPSHOT'):
                    discovery_source_tier=[v.get('discovery_source_tier', 'UNKNOWN') for v in variants],
                    authority_source=status['refs'], official_url=selected.get('identity', {}).get('official_url', 'UNKNOWN'),
                    screen=deepcopy(screen) if screen_ok else {}, intake_issues=sorted(set(errors)),
+                   why_matched=why_matched,
                    unresolved_eligibility_items=[] if qstatus != 'VERIFY' else ['qualification/work-right VERIFY'],
                    raw_variants=variants, merged_from=[v.get('candidate_id', 'UNKNOWN') for v in variants],
                    provenance=[{'discovery': v.get('discovery_source'), 'observations': v.get('observations', [])} for v in variants],

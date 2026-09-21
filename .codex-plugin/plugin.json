@@ -1,14 +1,14 @@
 {
   "name": "career-intelligence",
-  "version": "0.2.7",
-  "description": "Evidence-first career intelligence for job discovery, role analysis, application preparation, job quality, and work-right checks.",
+  "version": "0.2.8",
+  "description": "Evidence-first career intelligence for public job discovery, capability-driven discovery, role analysis, application preparation, job quality, and work-right or sponsorship checks.",
   "author": {
     "name": "Career Intelligence Contributors"
   },
   "interface": {
     "displayName": "Career Intelligence",
-    "shortDescription": "Evidence-first career research toolkit",
-    "longDescription": "Use Career Intelligence for career direction, bounded public job discovery, JD analysis, candidate routing, application preparation, job quality, and work-right or sponsorship questions. Human review remains required before external action.",
+    "shortDescription": "Evidence-first career research and discovery toolkit",
+    "longDescription": "Use Career Intelligence for career direction, capability-driven discovery, bounded public job discovery, JD analysis, candidate routing, application preparation, job quality, and work-right or sponsorship questions. configured_review keeps caller-owned configured sources; market_discovery and hybrid_discovery accept bounded Capability Profile and Role Hypothesis inputs without writing Career state. Human review remains required before external action.",
     "developerName": "Career Intelligence Contributors",
     "category": "Productivity",
     "capabilities": [

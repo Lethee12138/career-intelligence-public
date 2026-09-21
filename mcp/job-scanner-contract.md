@@ -30,24 +30,26 @@ Provide the ChatGPT/agent-facing high-level operation for one bounded scan cycle
 Reference implementation:
 
 - Core orchestration: `scripts/career_scan.py`
-- Private MCP HTTP surface: `mcp/career-mcp-http-server.mjs`
+- MCP HTTP surface: `mcp/career-mcp-http-server.mjs`
 - Secure Tunnel helper: `scripts/career-mcp-tunnel.sh`
 
-The MCP server binds only to `127.0.0.1:8797`. Tool execution is stateless and performs no Career-context writes, while current exact-role continuity is read from a private local context snapshot outside the repository through `scripts/career_context_provider.py`. Tunnel ID and runtime credentials remain external to the repository; Career must not reuse another workspace's tunnel ID, local MCP port, or credential file.
+The MCP server binds only to `127.0.0.1:8797`. Tool execution is stateless and performs no Career-context writes. A caller may provide private context through its own read-only context provider; personal context, tunnel IDs and runtime credentials remain outside this repository.
 
 Input:
 
+- `mode = configured_review | market_discovery | hybrid_discovery` (default `hybrid_discovery`)
 - `poolMode = BROAD | FOCUSED`
 - optional request-scoped `careerContext` overlay
+- optional `discovery` object with Capability Profile, Role Hypotheses, taxonomy reference, market/location scope, candidate constraints and supplied discovery candidates
 - `detailLevel = summary | review | full`
 
-The current local Career context provider is always enabled on the public ChatGPT tool surface; callers cannot disable or replace it.
+The caller's context provider is read-only and remains outside this repository; a public package installation contains no personal context snapshot or source preset.
 
-The public ChatGPT MCP surface deliberately does **not** expose `scanConfig`, source adapters, URLs, discovery queries or source limits. `BROAD` / `FOCUSED` can only change the post-discovery pool view. The output includes the immutable source scope/fingerprint and current Career-context source/version so callers can detect scope or continuity drift. Invalid runtime state returns a descriptive contract error; raw implementation exceptions are not part of the public contract.
+`configured_review` keeps caller-owned configured sources and does not widen source policy. `market_discovery` builds Search Execution `0.2.4` from supplied Capability Profile / Role Hypotheses and supplied candidates; it does not invent vacancies. `hybrid_discovery` combines configured candidates with discovery candidates and deduplicates them. `BROAD` / `FOCUSED` only change the post-discovery pool view. The output includes source scope, discovery mode and candidate explanation fields. Invalid runtime state returns a descriptive contract error; raw implementation exceptions are not part of the public contract.
 
 Execution:
 
-`public discovery → official verification → dedupe → transparent triage → exact-role review packets`
+`configured/public discovery → Role Hypothesis handoff → official verification → dedupe → transparent triage → exact-role review packets`
 
 Output:
 

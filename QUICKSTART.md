@@ -17,8 +17,33 @@ The repository does not include a personal context snapshot or a personal job-sc
 1. Install or load the Skill in your client.
 2. Start the local MCP service if your client uses MCP.
 3. Supply private candidate context through the client's supported external context mechanism.
-4. Supply a current role or a caller-owned scan configuration when discovery is requested.
+4. Supply a Capability Profile / Role Hypothesis input, or a caller-owned configured source set, when discovery is requested.
 5. Review facts, evidence, gaps, eligibility, quality and VERIFY items before any external action.
+
+## MCP discovery modes
+
+The single user-facing MCP tool is `career.scan_and_review`:
+
+- `configured_review` keeps the caller's configured source policy.
+- `market_discovery` builds a Search Execution `0.2.4` handoff from supplied Capability Profile / Role Hypotheses and discovery candidates.
+- `hybrid_discovery` combines configured candidates with discovery candidates and deduplicates them.
+
+Discovery candidates are leads requiring official-source verification. Each visible candidate carries `role_family`, `ai_involvement`, structured `why_matched`, `evidence_refs`, `risk` and `next_action`. AI capability does not imply an AI-only search: the taxonomy keeps AI-core, AI-enabled and non-AI-but-fit families in view.
+
+Example request shape (synthetic values only):
+
+```json
+{
+  "mode": "market_discovery",
+  "discovery": {
+    "roleHypotheses": [{"id": "SYN-H1", "role_or_family": "Product"}],
+    "capabilityProfile": {"capabilities": ["SYN-CAPABILITY"]},
+    "candidates": [{"company": "Example Org", "role": "Product Manager", "role_family": "PRODUCT"}]
+  }
+}
+```
+
+This example is a bounded discovery input, not a vacancy or application recommendation.
 
 ## Start the local service
 

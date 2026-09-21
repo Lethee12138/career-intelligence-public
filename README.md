@@ -16,8 +16,11 @@ Support depends on each client's Skill and MCP implementation.
 ## What it provides
 
 - evidence-first role and JD analysis
-- output-first and capability-first discovery
+- output-first and capability-first discovery through Capability → Role Family → Market Title mappings
+- AI-neutral discovery across AI-core, AI-enabled and non-AI-but-fit work
 - bounded job discovery and routing
+- MCP `career.scan_and_review` modes: `configured_review`, `market_discovery`, and `hybrid_discovery`
+- structured `why_matched` explanations with evidence references
 - job quality and market-calibration contracts
 - work-right, sponsorship and work-territory checks
 - application-preparation review boundaries
@@ -25,7 +28,7 @@ Support depends on each client's Skill and MCP implementation.
 
 ## Quick start
 
-Start with [QUICKSTART.md](QUICKSTART.md). The public demo is in [tests/fixtures](tests/fixtures) and [tests/outputs/public-demo-review.md](tests/outputs/public-demo-review.md).
+Start with [QUICKSTART.md](QUICKSTART.md). MCP details are in [mcp/job-scanner-contract.md](mcp/job-scanner-contract.md). The public demo is in [tests/fixtures](tests/fixtures) and [tests/outputs/public-demo-review.md](tests/outputs/public-demo-review.md).
 
 ## Privacy boundary
 
