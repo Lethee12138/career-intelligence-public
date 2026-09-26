@@ -28,6 +28,7 @@ except ModuleNotFoundError:  # direct execution from repository root
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SCAN_PRESET = ROOT / "config/current-job-scan-preset.json"
+DEFAULT_MARKET_DISCOVERY_PROFILE = ROOT / "references/market-discovery-profile.default.json"
 
 
 POOL_RETAIN_STATES = {
@@ -90,7 +91,20 @@ def _pool_view(scan: dict[str, Any], pool_mode: str) -> dict[str, Any]:
                 "screening_state": (candidate.get("screening") or {}).get("state"),
                 "screening_reasons": (candidate.get("screening") or {}).get("reasons"),
                 "source_url": candidate.get("source_url"),
+                "exact_role": candidate.get("role"),
+                "official_source": candidate.get("official_source", "UNKNOWN"),
+                "live_status": candidate.get(
+                    "live_status", candidate.get("verification_status", "UNKNOWN")
+                ),
+                "qualification_facts": candidate.get("qualification_facts", []),
+                "deadline": candidate.get("deadline", "UNKNOWN"),
+                "application_rule": candidate.get("application_rule", "UNKNOWN"),
+                "provenance": candidate.get("provenance", []),
+                "uncertainty": candidate.get("uncertainty", []),
                 "role_family": candidate.get("role_family", "UNKNOWN"),
+                "company_coverage_bucket": candidate.get(
+                    "company_coverage_bucket", "UNKNOWN"
+                ),
                 "ai_involvement": candidate.get("ai_involvement", "UNKNOWN"),
                 "why_matched": candidate.get("why_matched", "UNKNOWN"),
                 "evidence_refs": candidate.get("evidence_refs", []),
@@ -142,10 +156,115 @@ def _normalize_discovery(discovery: dict[str, Any] | None) -> dict[str, Any]:
         "input_refs": raw.get("input_refs", raw.get("inputRefs", [])),
         "candidates": raw.get("candidates", raw.get("discovery_candidates", [])),
         "taxonomy_ref": raw.get("taxonomy_ref", raw.get("taxonomyRef")),
+        "provider": raw.get("provider", "EXTERNAL_WEB_DISCOVERY_HANDOFF"),
+        "provider_run": raw.get("provider_run", raw.get("providerRun", {})),
     }
 
 
-def _make_discovery_handoff(discovery: dict[str, Any], scan_id: str, created_at: str) -> dict[str, Any]:
+def _market_discovery_profile(career_context: dict[str, Any]) -> dict[str, Any]:
+    """Load public neutral defaults, then apply caller-scoped profile values."""
+    base = _load_json(DEFAULT_MARKET_DISCOVERY_PROFILE)
+    overlay = career_context.get("market_discovery_profile")
+    if isinstance(overlay, dict):
+        merged = copy.deepcopy(base)
+        for key, value in overlay.items():
+            if isinstance(value, dict) and isinstance(merged.get(key), dict):
+                merged[key] = {**merged[key], **copy.deepcopy(value)}
+            else:
+                merged[key] = copy.deepcopy(value)
+        return merged
+    return base
+
+
+def _coverage_bucket(candidate: dict[str, Any]) -> str:
+    return str(
+        candidate.get("company_coverage_bucket")
+        or candidate.get("companyCoverageBucket")
+        or candidate.get("company_type")
+        or candidate.get("companyType")
+        or "UNKNOWN"
+    ).strip().upper()
+
+
+def _audit_market_discovery_coverage(
+    candidates: list[dict[str, Any]],
+    profile: dict[str, Any],
+    provider_run: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    safeguard = profile.get("coverage_safeguard") or {}
+    min_known = int(safeguard.get("min_known_candidates", 3))
+    threshold = float(safeguard.get("head_bucket_share_threshold", 0.6))
+    head_buckets = {str(v).upper() for v in safeguard.get("head_company_buckets", [])}
+    supplement_buckets = [str(v).upper() for v in safeguard.get("supplement_buckets", [])]
+    allowed_buckets = {
+        str(v).upper() for v in profile.get("company_coverage_buckets", [])
+    }
+    buckets = [_coverage_bucket(candidate) for candidate in candidates]
+    known = [bucket for bucket in buckets if bucket in allowed_buckets]
+    distribution: dict[str, int] = {}
+    for bucket in known:
+        distribution[bucket] = distribution.get(bucket, 0) + 1
+    head_count = sum(distribution.get(bucket, 0) for bucket in head_buckets)
+    head_share = (head_count / len(known)) if known else None
+    missing = [bucket for bucket in supplement_buckets if distribution.get(bucket, 0) == 0]
+    provider_run = provider_run if isinstance(provider_run, dict) else {}
+    coverage_evidence = provider_run.get("coverage_evidence")
+    coverage_evidence = coverage_evidence if isinstance(coverage_evidence, dict) else {}
+    evidence_refs = coverage_evidence.get("refs")
+    evidence_refs = evidence_refs if isinstance(evidence_refs, list) else []
+    concentration_supported = bool(
+        coverage_evidence.get("head_concentration_supported") is True
+        and evidence_refs
+    )
+    supplement_count = provider_run.get("coverage_supplement_count")
+    supplement_pass = bool(
+        provider_run.get("coverage_supplement_pass") is True
+        or (
+            isinstance(supplement_count, (int, float))
+            and not isinstance(supplement_count, bool)
+            and supplement_count > 0
+        )
+    )
+    imbalance = bool(
+        len(known) >= min_known
+        and head_share is not None
+        and head_share > threshold
+        and missing
+        and not concentration_supported
+        and not supplement_pass
+    )
+    state = (
+        str(safeguard.get("imbalance_state") or "DISCOVERY_COVERAGE_IMBALANCE")
+        if imbalance
+        else "COVERAGE_REVIEWED"
+        if len(known) >= min_known
+        else "COVERAGE_UNREVIEWED"
+    )
+    return {
+        "state": state,
+        "profile_id": profile.get("profile_id", "UNKNOWN"),
+        "known_candidate_count": len(known),
+        "unknown_or_unmapped_candidate_count": len(candidates) - len(known),
+        "total_candidate_count": len(candidates),
+        "company_coverage_distribution": distribution,
+        "head_bucket_share": head_share,
+        "market_evidence_supports_concentration": concentration_supported,
+        "market_evidence_refs": evidence_refs,
+        "supplement_pass_already_completed": supplement_pass,
+        "missing_supplement_buckets": missing,
+        "supplement_required": imbalance,
+        "supplement_buckets": missing if imbalance else [],
+        "automatic_supplement": bool(safeguard.get("automatic_supplement", False)),
+        "interpretation": "Discovery-result coverage heuristic only; not a market-distribution claim.",
+    }
+
+
+def _make_discovery_handoff(
+    discovery: dict[str, Any],
+    scan_id: str,
+    created_at: str,
+    market_profile: dict[str, Any],
+) -> dict[str, Any]:
     """Reuse the accepted Search Execution contract without generating facts."""
     import sys
 
@@ -161,6 +280,15 @@ def _make_discovery_handoff(discovery: dict[str, Any], scan_id: str, created_at:
     human_constraints = constraints if isinstance(constraints, list) and all(
         isinstance(item, str) for item in constraints
     ) else []
+    human_constraints = human_constraints + [
+        f"Market discovery default profile: {market_profile.get('profile_id', 'UNKNOWN')}",
+        "Company size, big-tech status, familiar brand and configured adapter presence do not receive discovery priority bonuses.",
+        "company adapter != market scope",
+    ]
+    human_constraints.extend(
+        f"Strong negative work-style signal: {item}"
+        for item in market_profile.get("work_style_negative_signals", [])
+    )
     taxonomy_path = Path(__file__).resolve().parents[1] / "schemas/capability-role-family-taxonomy.md"
     workflow_path = Path(__file__).resolve().parents[1] / "workflows/discover.md"
     if not taxonomy_path.exists() or not workflow_path.exists():
@@ -173,11 +301,34 @@ def _make_discovery_handoff(discovery: dict[str, Any], scan_id: str, created_at:
         "coverage_plan": {
             "market_scope": discovery.get("market_scope") or [],
             "company_types": discovery.get("company_types") or [],
+            "default_profile_id": market_profile.get("profile_id", "UNKNOWN"),
+            "company_priority": copy.deepcopy(market_profile.get("company_priority") or {}),
+            "company_coverage_buckets": copy.deepcopy(
+                market_profile.get("company_coverage_buckets") or []
+            ),
+            "decision_priority": copy.deepcopy(market_profile.get("decision_priority") or []),
+            "market_location_preferences": copy.deepcopy(
+                market_profile.get("market_location_preferences") or {}
+            ),
+            "location_ordering": copy.deepcopy(
+                market_profile.get("location_ordering") or []
+            ),
+            "coverage_safeguard": copy.deepcopy(
+                market_profile.get("coverage_safeguard") or {}
+            ),
             "taxonomy_ref": discovery.get("taxonomy_ref") or "schemas/capability-role-family-taxonomy.md",
             "taxonomy_sha256": hashlib.sha256(taxonomy_path.read_bytes()).hexdigest(),
             "discovery_workflow_ref": "workflows/discover.md",
             "candidate_constraints": constraints,
             "capability_profile_supplied": isinstance(discovery.get("capability_profile"), dict),
+            "generic_discovery": {
+                "provider": discovery.get("provider"),
+                "execution": "EXTERNAL",
+                "built_in_web_discovery": False,
+                "result_ingest": "career.scan_and_review.discovery.candidates",
+                "dedicated_adapters_are_market_boundary": False,
+                "official_exact_role_verification": "REQUIRED_WHERE_AVAILABLE",
+            },
         },
     }
     return make_handoff(payload, f"MCP-DISCOVERY-{scan_id}", str(created_at)[:10])
@@ -185,12 +336,71 @@ def _make_discovery_handoff(discovery: dict[str, Any], scan_id: str, created_at:
 
 def _normalize_discovery_candidate(candidate: dict[str, Any], handoff: dict[str, Any]) -> dict[str, Any]:
     raw = dict(candidate)
-    role = raw.get("role") or raw.get("role_title") or raw.get("market_title") or "UNKNOWN"
-    company = raw.get("company") or "UNKNOWN"
+    role = str(
+        raw.get("role")
+        or raw.get("exact_role")
+        or raw.get("exactRole")
+        or raw.get("role_title")
+        or raw.get("market_title")
+        or "UNKNOWN"
+    ).strip()
+    company = str(raw.get("company") or "UNKNOWN").strip()
+    if not company or not role or company == "UNKNOWN" or role == "UNKNOWN":
+        raise ValueError("generic discovery candidate requires company and exact role")
     role_family = raw.get("role_family") or raw.get("roleFamily") or "UNKNOWN"
+    company_coverage_bucket = (
+        raw.get("company_coverage_bucket")
+        or raw.get("companyCoverageBucket")
+        or raw.get("company_type")
+        or raw.get("companyType")
+        or "UNKNOWN"
+    )
     evidence_refs = raw.get("evidence_refs", raw.get("evidenceRefs", []))
     if evidence_refs is None:
         evidence_refs = []
+    official_source = raw.get("official_source", raw.get("officialSource"))
+    official_source = dict(official_source) if isinstance(official_source, dict) else {}
+    official_url = official_source.get("url") or raw.get("official_url") or raw.get("officialUrl")
+    if official_url:
+        official_source.setdefault("url", official_url)
+    official_source.setdefault("exact_role_verified", False)
+    official_source.setdefault("inspected_original", False)
+    discovery_source = raw.get("discovery_source", raw.get("discoverySource"))
+    provenance = raw.get("provenance", [])
+    provenance = list(provenance) if isinstance(provenance, list) else []
+    if discovery_source and not provenance:
+        provenance.append({"kind": "DISCOVERY", "url": discovery_source})
+    if official_url and not any(
+        isinstance(item, dict) and item.get("url") == official_url for item in provenance
+    ):
+        provenance.append({"kind": "OFFICIAL_CANDIDATE", "url": official_url})
+    live_status = raw.get("live_status", raw.get("liveStatus", "VERIFY"))
+    if not isinstance(live_status, str):
+        live_status = "VERIFY"
+    qualification_facts = raw.get(
+        "qualification_facts", raw.get("qualificationFacts", [])
+    )
+    qualification_facts = (
+        list(qualification_facts) if isinstance(qualification_facts, list) else []
+    )
+    uncertainty = raw.get("uncertainty", [])
+    uncertainty = list(uncertainty) if isinstance(uncertainty, list) else []
+    for marker, missing in (
+        ("OFFICIAL_EXACT_ROLE_NOT_VERIFIED", not (
+            official_source.get("exact_role_verified") is True
+            and official_source.get("inspected_original") is True
+        )),
+        ("LIVE_STATUS_VERIFY", live_status in {None, "UNKNOWN", "VERIFY"}),
+        ("QUALIFICATION_FACTS_VERIFY", not qualification_facts),
+        ("DEADLINE_VERIFY", raw.get("deadline") in {None, "", "UNKNOWN"}),
+        (
+            "APPLICATION_RULE_VERIFY",
+            raw.get("application_rule", raw.get("applicationRule"))
+            in {None, "", "UNKNOWN"},
+        ),
+    ):
+        if missing and marker not in uncertainty:
+            uncertainty.append(marker)
     why = raw.get("why_matched")
     if not isinstance(why, dict):
         why = {
@@ -207,13 +417,24 @@ def _normalize_discovery_candidate(candidate: dict[str, Any], handoff: dict[str,
             "company": company,
             "role": role,
             "location": raw.get("location") or raw.get("city") or "UNKNOWN",
+            "official_source": official_source or "UNKNOWN",
+            "live_status": live_status,
+            "qualification_facts": qualification_facts,
+            "deadline": raw.get("deadline") or "UNKNOWN",
+            "application_rule": raw.get(
+                "application_rule", raw.get("applicationRule", "UNKNOWN")
+            ),
+            "provenance": provenance,
+            "uncertainty": uncertainty,
             "role_family": role_family,
+            "company_coverage_bucket": str(company_coverage_bucket).strip().upper(),
             "ai_involvement": raw.get("ai_involvement", raw.get("aiInvolvement", "UNKNOWN")),
             "why_matched": why,
             "evidence_refs": evidence_refs,
             "risk": list(raw.get("risk", raw.get("risks", [])) or []) + ["OFFICIAL_SOURCE_VERIFY_REQUIRED"],
             "next_action": "VERIFY_OFFICIAL_SOURCE",
-            "source_type": raw.get("source_type", "DISCOVERY_INPUT"),
+            "source_url": official_url or discovery_source or raw.get("source_url"),
+            "source_type": raw.get("source_type", "GENERIC_DISCOVERY_INPUT"),
             "verification_status": "NEEDS_VERIFY",
             "discovery_only": True,
             "discovery_context": {
@@ -376,6 +597,7 @@ def run_scan_review(
     else:
         resolved_context = copy.deepcopy(career_context or {})
 
+    market_profile = _market_discovery_profile(resolved_context)
     normalized_discovery = _normalize_discovery(discovery)
     captured_at = source_runtime.utc_now()
     resolved = None
@@ -401,38 +623,86 @@ def run_scan_review(
     discovery_info: dict[str, Any] = {
         "mode": mode,
         "state": "NOT_REQUESTED" if mode == "configured_review" else "NOT_SUPPLIED",
+        "generic_provider": {
+            "provider": normalized_discovery.get("provider"),
+            "execution": "EXTERNAL",
+            "built_in_web_discovery": False,
+            "result_ingest": "career.scan_and_review.discovery.candidates",
+            "dedicated_adapters_are_market_boundary": False,
+        },
         "role_hypothesis_count": 0,
         "candidate_count": 0,
         "handoff_schema_version": None,
+        "default_profile_id": market_profile.get("profile_id", "UNKNOWN"),
+        "coverage": _audit_market_discovery_coverage([], market_profile),
     }
     empty_discovery = _normalize_discovery(None)
     if mode in {"market_discovery", "hybrid_discovery"} and normalized_discovery != empty_discovery:
-        handoff = _make_discovery_handoff(
-            normalized_discovery,
-            scan.get("scan_id") or "UNKNOWN",
-            captured_at,
+        raw_candidates = normalized_discovery.get("candidates", [])
+        role_hypotheses = normalized_discovery.get("role_hypotheses", [])
+        handoff = (
+            _make_discovery_handoff(
+                normalized_discovery,
+                scan.get("scan_id") or "UNKNOWN",
+                captured_at,
+                market_profile,
+            )
+            if role_hypotheses
+            else None
         )
+        if not handoff and not raw_candidates:
+            raise ValueError(
+                "market discovery requires discovery.roleHypotheses or discovery.candidates"
+            )
+        ingest_context = handoff or {"schema_version": "0.2.4"}
         discovery_candidates = [
-            _normalize_discovery_candidate(candidate, handoff)
-            for candidate in normalized_discovery.get("candidates", [])
+            _normalize_discovery_candidate(candidate, ingest_context)
+            for candidate in raw_candidates
             if isinstance(candidate, dict)
         ]
+        coverage = _audit_market_discovery_coverage(
+            discovery_candidates,
+            market_profile,
+            normalized_discovery.get("provider_run") or {},
+        )
         scan = _merge_discovery_candidates(scan, discovery_candidates)
         scan.setdefault("source_results", []).append({
-            "adapter": "discovery",
-            "mode": "role_hypothesis",
-            "status": "OK",
+            "provider": normalized_discovery.get("provider"),
+            "mode": "external_web_handoff",
+            "status": "RESULTS_INGESTED" if discovery_candidates else "HANDOFF_REQUIRED",
             "record_count": len(discovery_candidates),
         })
         discovery_info.update(
             {
-                "state": "READY",
+                "state": "RESULTS_INGESTED" if discovery_candidates else "HANDOFF_REQUIRED",
                 "role_hypothesis_count": len(normalized_discovery.get("role_hypotheses", [])),
                 "candidate_count": len(discovery_candidates),
-                "handoff_schema_version": handoff.get("schema_version"),
-                "handoff": handoff,
+                "handoff_schema_version": ingest_context.get("schema_version"),
+                "provider_run": normalized_discovery.get("provider_run") or {},
+                "coverage": coverage,
+                "coverage_state": coverage["state"],
+                "continuation_state": (
+                    "SUPPLEMENT_REQUIRED"
+                    if coverage["supplement_required"]
+                    else "COMPLETE_FOR_CURRENT_SCOPE"
+                    if discovery_candidates
+                    else "HANDOFF_REQUIRED"
+                ),
             }
         )
+        if coverage["supplement_required"]:
+            discovery_info["supplemental_handoff"] = {
+                "provider": "EXTERNAL_WEB_DISCOVERY_HANDOFF",
+                "trigger": "DISCOVERY_COVERAGE_IMBALANCE",
+                "action": "CONTINUE_DISCOVERY_WITHIN_CURRENT_SCOPE",
+                "company_coverage_buckets": coverage["supplement_buckets"],
+                "reuse_current_role_hypotheses": True,
+                "configured_adapters_are_market_boundary": False,
+                "human_reapproval_required": False,
+                "external_action": False,
+            }
+        if handoff:
+            discovery_info["handoff"] = handoff
     elif mode == "market_discovery":
         raise ValueError("market_discovery requires discovery input")
 
@@ -464,7 +734,7 @@ def run_scan_review(
             else "CALLER_SUPPLIED" if mode == "configured_review"
             else "DISCOVERY_INPUT" if mode == "market_discovery"
             else "CURRENT_CONFIGURED_SOURCES_PLUS_DISCOVERY_INPUT"
-            if discovery_info["state"] == "READY" else "CURRENT_CONFIGURED_SOURCES"
+            if discovery_info["state"] == "RESULTS_INGESTED" else "CURRENT_CONFIGURED_SOURCES"
         ),
         "source_scope": scope_before,
         "pool_view": pool_view,

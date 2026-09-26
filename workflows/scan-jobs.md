@@ -73,3 +73,9 @@ Allowed Career Intelligence routes:
 - TARGETED_PREPARE
 - WATCH
 - CLOSE
+
+## Discovery mode extension
+
+`configured_review` scans only host-configured sources. `market_discovery` emits an external-Web handoff when candidates are absent. `hybrid_discovery` runs configured and generic paths, then deduplicates. Dedicated adapters never define the market boundary. Generic candidates stay `NEEDS_VERIFY` until official-source review.
+
+An optional caller-scoped `careerContext.market_discovery_profile` controls neutral company coverage and result-set concentration checks. Keep current candidates and request at most one same-scope supplemental external-Web pass when the profile requires it.

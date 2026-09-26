@@ -67,3 +67,9 @@ The multi-source batch may triage verified and unverified vacancies for review. 
 ## External Action Boundary
 
 Scanning creates candidates only. Human review remains required before application actions.
+
+## Generic discovery and coverage
+
+Source-scope immutability applies to `configured_review`. In `market_discovery` and `hybrid_discovery`, a generic external-Web handoff may add standardized candidates from companies without dedicated adapters. Adapter availability never sets the market boundary. External candidates enter as `NEEDS_VERIFY` with `VERIFY_OFFICIAL_SOURCE` unless exact official-source checks are supplied.
+
+The public neutral profile may detect concentration in the returned result set. `UNKNOWN` buckets do not count as verified coverage. A market-evidence override requires explicit evidence refs, and one completed supplement pass prevents repeated supplement requests.

@@ -20,6 +20,9 @@ Support depends on each client's Skill and MCP implementation.
 - AI-neutral discovery across AI-core, AI-enabled and non-AI-but-fit work
 - bounded job discovery and routing
 - MCP `career.scan_and_review` modes: `configured_review`, `market_discovery`, and `hybrid_discovery`
+- external Web discovery handoff and standardized candidate-only result ingest
+- configurable Market Discovery profiles with neutral public defaults
+- result-set coverage safeguards for over-concentrated discovery batches
 - structured `why_matched` explanations with evidence references
 - job quality and market-calibration contracts
 - work-right, sponsorship and work-territory checks
@@ -37,6 +40,12 @@ Users provide their own private Career context at runtime. Keep personal evidenc
 ## External action boundary
 
 The toolkit produces review candidates and handoffs. It does not submit applications, contact employers, log in, upload files, modify a user's Career records or silently create evidence. Human review remains required before any external action.
+
+## Generic Market Discovery
+
+Dedicated company adapters are optional source and verification accelerators; they are not the discoverable-market boundary. `market_discovery` returns `HANDOFF_REQUIRED` with `EXTERNAL_WEB_DISCOVERY_HANDOFF` when no candidates are supplied. A read-only Web-capable host can discover public leads, prefer official Careers/ATS pages, then return standardized candidates through `career.scan_and_review.discovery.candidates`. The runtime reports `builtInWebDiscovery=false` and never pretends it browsed.
+
+Public defaults are neutral on company size, big-tech status, familiar brands and adapter availability. Callers can provide a private `careerContext.market_discovery_profile`; the public default contains no personal priorities and the example is synthetic. The coverage safeguard evaluates only the returned result set. It does not claim that the real market has a particular distribution.
 
 ## License
 

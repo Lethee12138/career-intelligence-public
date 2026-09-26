@@ -80,7 +80,8 @@ def make_handoff(discovery, search_id, created_at, pool=None, target_batch_size=
             'authority_verification_rules': ['Resolve exact official job/programme and eligibility/sponsor source',
                 'Capture inspected content, exact identity, dates and unresolved conflicts; missing authority remains VERIFY'],
             'candidate_fields_required': list(IDENTITY) + ['candidate_id', 'discovery_source', 'discovery_source_tier',
-                'authority_source', 'official_url', 'source_capture_date', 'last_verified', 'opening_status'] + list(DETAILS) + [
+                'authority_source', 'official_url', 'source_capture_date', 'last_verified', 'opening_status',
+                'company_coverage_bucket'] + list(DETAILS) + [
                 'work_right_review.current_residence', 'work_right_review.required_work_territory',
                 'work_right_review.residence_requirement', 'work_right_review.overseas_remote_allowed',
                 'work_right_review.relocation_before_start',
@@ -90,8 +91,11 @@ def make_handoff(discovery, search_id, created_at, pool=None, target_batch_size=
             'target_batch_size': target_batch_size, 'target_is_advisory': True,
             'discovery_mode': 'HIGH_RECALL', 'selection_mode': 'SEPARATE_DOWNSTREAM_SCREEN',
             'ai_neutral_by_default': True, 'coverage_plan': coverage_plan,
-            'coverage_rules': ['Audit role family, industry, company, city/market, AI involvement and source accessibility',
+            'coverage_rules': ['Audit role family, industry, company, company coverage bucket, city/market, AI involvement and source accessibility',
+                'Company size, big-tech status, familiar brand, configured adapter presence and existing candidate-pool proximity do not receive discovery priority bonuses',
+                'Dedicated company adapters are source capabilities, never the discoverable market boundary',
                 'Soft coverage targets guide search; they are not market-distribution claims or hard quotas',
+                'If results are materially concentrated in head internet/tech companies without supporting market evidence, mark DISCOVERY_COVERAGE_IMBALANCE and continue the same read-only search scope toward missing supplement buckets from coverage_plan',
                 'Two or three strong Targeted candidates do not complete broad discovery'],
             'stop_conditions': ['duplicate-heavy after coverage expansion', 'no new responsibility patterns across relevant capability roots',
                 'authority unavailable', 'mostly hard-constraint violations after broad search',

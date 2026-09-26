@@ -1,0 +1,44 @@
+{
+  "profile_id": "PUBLIC_NEUTRAL_MARKET_DISCOVERY_PROFILE",
+  "profile_version": "0.2.10",
+  "profile_kind": "PUBLIC_NEUTRAL_DEFAULT",
+  "company_priority": {
+    "company_size": "NEUTRAL",
+    "big_tech": "NO_PRIORITY_BONUS",
+    "familiar_brand": "NO_PRIORITY_BONUS",
+    "configured_adapter": "NO_PRIORITY_BONUS"
+  },
+  "company_coverage_buckets": [
+    "LARGE_INTERNET_TECH",
+    "MID_LARGE_TECH",
+    "MATURE_SME",
+    "SAAS_ENTERPRISE_SOFTWARE",
+    "AI_NATIVE_APPLICATION",
+    "CONSUMER_TECH",
+    "GAME_CONTENT",
+    "FOREIGN_INTERNATIONAL_TEAM",
+    "TRADITIONAL_DIGITAL_INNOVATION",
+    "STARTUP_SCALEUP"
+  ],
+  "decision_priority": [],
+  "work_style_negative_signals": [],
+  "market_location_preferences": {},
+  "location_ordering": [],
+  "market_specific_exceptions": [],
+  "coverage_safeguard": {
+    "min_known_candidates": 3,
+    "head_company_buckets": ["LARGE_INTERNET_TECH"],
+    "head_bucket_share_threshold": 0.6,
+    "supplement_buckets": [
+      "MID_LARGE_TECH",
+      "SAAS_ENTERPRISE_SOFTWARE",
+      "AI_NATIVE_APPLICATION",
+      "FOREIGN_INTERNATIONAL_TEAM"
+    ],
+    "imbalance_state": "DISCOVERY_COVERAGE_IMBALANCE",
+    "automatic_supplement": false,
+    "require_market_evidence_refs_for_override": true,
+    "unknown_bucket_counts_as_known": false,
+    "max_supplement_passes": 1
+  }
+}

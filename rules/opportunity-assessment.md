@@ -4,7 +4,7 @@ Assess ten dimensions independently: Capability Fit, Evidence Fit, Experience Fi
 
 Infer actual outputs/problems from responsibilities: describe deliverables, ownership and whether the title is misleading. Mark interpretation INFERENCE and cite JD premises. Industry remains open: technology, foreign companies in China, state-owned digitalisation, creative/game/consumer/SaaS/other industries are evaluated using actual work.
 
-Preserve the current case's preferences. The accepted source snapshot uses 杭州 > 南京/苏州 > 广州 > 上海 > 深圳. Beijing needs a role-specific high-value exception; high Career Value does not erase its Practical Fit penalty or imply relocation consent. A city option is not a guaranteed location assignment.
+Preserve the current case's caller-supplied preferences. Do not ship a universal city order or infer relocation consent. High Career Value does not erase Practical Fit constraints, and a city option is not a guaranteed location assignment.
 
 Strong negative Work-style signals when core daily duties: high-pressure sales quota, acquisition KPI, long-term revenue/sales ownership, frequent persuasive selling, frequent negotiation-heavy client work. Ordinary stakeholder meetings, user interviews, cross-functional collaboration, internal presentations and product-decision explanations are neutral by default. General delivery pressure alone is not sales; clarify ambiguous “business expansion” only if it changes the decision.
 

@@ -105,3 +105,9 @@ Allowed status:
 - OPEN_VERIFIED
 - NEEDS_VERIFY
 - CLOSED
+
+## Generic Market Discovery callable contract
+
+Preferred callers use top-level `mode` and `discovery`. Older callers may use structured `scanConfig.mode` and `scanConfig.discovery`; conflicting values fail closed. `market_discovery` without candidates returns `HANDOFF_REQUIRED` for `EXTERNAL_WEB_DISCOVERY_HANDOFF`. Candidate-only result ingest is accepted. `hybrid_discovery` combines configured and generic candidates and deduplicates them. Dedicated adapters improve source verification and never define the market boundary.
+
+`tools/list` exposes company, exact-role aliases, location, official source, live status, qualification facts, deadline/application rule, provenance, uncertainty, role family, AI involvement, `why_matched`, evidence refs, risk and company coverage bucket. A caller may provide `careerContext.market_discovery_profile`; the public package ships only neutral defaults and a synthetic example.

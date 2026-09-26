@@ -128,3 +128,9 @@ Allowed routes:
 ## Human Review
 
 Required before external action or persistent adoption.
+
+## Generic discovery
+
+`career.scan_and_review` supports `configured_review`, `market_discovery` and `hybrid_discovery`. Generic candidates add: `exact_role`, `official_source`, `live_status`, `qualification_facts`, `deadline`, `application_rule`, `provenance`, `uncertainty`, `role_family`, `ai_involvement`, structured `why_matched`, `evidence_refs`, `risk`, `next_action` and `company_coverage_bucket`.
+
+Discovery state is `HANDOFF_REQUIRED` before external results and `RESULTS_INGESTED` after ingest. Coverage state may be `COVERAGE_UNREVIEWED`, `COVERAGE_REVIEWED`, or `DISCOVERY_COVERAGE_IMBALANCE`; the last keeps current candidates and may add a bounded `supplemental_handoff`. Public callers provide private context at runtime; the repository contains no personal context snapshot.

@@ -90,3 +90,27 @@ python3 -B -m unittest discover -s tests -p 'test_public_*.py'
 ## Boundaries
 
 No application submission, recruiter contact, login, upload, automatic monitoring, CV-source modification or Career-record write is performed by this toolkit.
+
+## Two-stage Market Discovery examples
+
+First call, with no company list and no candidates:
+
+```json
+{"mode":"market_discovery","discovery":{"roleHypotheses":[{"id":"SYN-H1","role_or_family":"Product"}],"marketScope":["SYNTHETIC_MARKET"]}}
+```
+
+Expected: `HANDOFF_REQUIRED` with `EXTERNAL_WEB_DISCOVERY_HANDOFF`. After a read-only external executor checks public sources, candidate-only ingest is valid:
+
+```json
+{"mode":"market_discovery","discovery":{"provider":"EXTERNAL_WEB_DISCOVERY_HANDOFF","candidates":[{"company":"Example MidTech","exact_role":"Digital Product Associate","company_coverage_bucket":"MID_LARGE_TECH","official_source":{"url":"https://example.invalid/jobs/syn-1","exact_role_verified":false},"live_status":"VERIFY"}]}}
+```
+
+Expected: `RESULTS_INGESTED`; unverified leads retain `NEEDS_VERIFY` and `VERIFY_OFFICIAL_SOURCE`. Older clients may send the compatibility envelope:
+
+```json
+{"scanConfig":{"mode":"market_discovery","discovery":{"roleHypotheses":[{"id":"SYN-H1","role_or_family":"Product"}]}}}
+```
+
+Pass caller-specific values under `careerContext.market_discovery_profile`; keep them outside this repository. See `schemas/market-discovery-profile.md` and the synthetic `references/market-discovery-profile.example.json`.
+
+If a known-bucket result set exceeds the configured head-bucket threshold and supplement buckets are missing, current candidates are kept and the response adds `DISCOVERY_COVERAGE_IMBALANCE` / `SUPPLEMENT_REQUIRED`. Return `providerRun.coverage_supplement_pass=true` after one same-scope supplement to stop repetition. A concentration override requires both `head_concentration_supported=true` and non-empty evidence refs.

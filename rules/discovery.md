@@ -43,3 +43,9 @@ ESCO / O*NET are optional REFERENCE VOCABULARY for title variants and occupation
 ## Bounded questioning
 
 Read existing evidence first, then a broad question only if material; selectively deepen the answer that changes capability status, ownership, role hypothesis, preference or market feasibility. Stop on repeated evidence, two successive answers with no new decision signal, inaccessible information, cosmetic completeness, or JD-specific gaps with no relevant JD. No default tests, personality interview, mandatory story for every gap or job-count-based confidence. Record why questioning stopped. Do not repeat every rule in the final report; show the consequential boundary once beside the affected conclusion.
+
+## Generic market boundary
+
+Configured company adapters improve source-specific discovery or verification; they do not define the discoverable market. Keep AI-core, AI-enabled and non-AI-but-fit lanes available, and use Capability → Role Family → Market Title mapping before title matching.
+
+When the runtime has no built-in Web discovery, return `EXTERNAL_WEB_DISCOVERY_HANDOFF`. Generic results remain leads until exact-role official-source verification. Audit concentration only as a property of the returned set, keep existing candidates, and request at most one bounded supplement pass when the configured profile threshold is exceeded without evidence-backed justification.

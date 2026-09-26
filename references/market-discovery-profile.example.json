@@ -1,0 +1,47 @@
+{
+  "notice": "SYNTHETIC / EXAMPLE ONLY — caller-specific configuration, not a universal Career truth.",
+  "profile_id": "SYNTHETIC_EXAMPLE_MARKET_DISCOVERY_PROFILE",
+  "profile_version": "0.2.10-example",
+  "profile_kind": "SYNTHETIC_EXAMPLE_ONLY",
+  "company_priority": {
+    "company_size": "NEUTRAL",
+    "big_tech": "NO_PRIORITY_BONUS",
+    "familiar_brand": "NO_PRIORITY_BONUS",
+    "configured_adapter": "NO_PRIORITY_BONUS"
+  },
+  "company_coverage_buckets": [
+    "LARGE_INTERNET_TECH",
+    "MID_LARGE_TECH",
+    "SAAS_ENTERPRISE_SOFTWARE",
+    "AI_NATIVE_APPLICATION",
+    "FOREIGN_INTERNATIONAL_TEAM"
+  ],
+  "decision_priority": [
+    "ROLE_RELEVANCE",
+    "EVIDENCE_FIT",
+    "JOB_QUALITY",
+    "PRACTICAL_CONSTRAINTS"
+  ],
+  "work_style_negative_signals": ["SYNTHETIC_EXAMPLE_SIGNAL"],
+  "market_location_preferences": {
+    "SYNTHETIC_MARKET_A": "ACTIVE",
+    "SYNTHETIC_MARKET_B": "OPEN"
+  },
+  "location_ordering": ["Example City Alpha", "Example City Beta"],
+  "market_specific_exceptions": [],
+  "coverage_safeguard": {
+    "min_known_candidates": 3,
+    "head_company_buckets": ["LARGE_INTERNET_TECH"],
+    "head_bucket_share_threshold": 0.6,
+    "supplement_buckets": [
+      "MID_LARGE_TECH",
+      "SAAS_ENTERPRISE_SOFTWARE",
+      "AI_NATIVE_APPLICATION",
+      "FOREIGN_INTERNATIONAL_TEAM"
+    ],
+    "automatic_supplement": false,
+    "require_market_evidence_refs_for_override": true,
+    "unknown_bucket_counts_as_known": false,
+    "max_supplement_passes": 1
+  }
+}

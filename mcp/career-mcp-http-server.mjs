@@ -153,6 +153,9 @@ const careerContextSchema = z.object({
   ).optional(),
   candidate_context: z.record(z.string(), z.unknown()).optional(),
   preference_context: z.record(z.string(), z.unknown()).optional(),
+  market_discovery_profile: z.record(z.string(), z.unknown()).optional().describe(
+    "Optional caller-scoped Market Discovery profile. Omit to use the public neutral defaults; see references/market-discovery-profile.example.json.",
+  ),
   existing_roles: z.array(z.record(z.string(), z.unknown())).optional(),
   company_constraints: z.record(
     z.string(),
@@ -160,17 +163,124 @@ const careerContextSchema = z.object({
   ).optional(),
 }).passthrough();
 
+const scanModeSchema = z.enum([
+  "configured_review",
+  "market_discovery",
+  "hybrid_discovery",
+]).describe(
+  "configured_review uses only configured adapters; market_discovery uses the external-Web handoff and supplied candidates; hybrid_discovery merges both paths.",
+);
+
+const officialSourceSchema = z.object({
+  url: z.string().optional(),
+  exact_role_verified: z.boolean().optional(),
+  inspected_original: z.boolean().optional(),
+}).passthrough();
+
+const companyCoverageBucketSchema = z.enum([
+  "LARGE_INTERNET_TECH",
+  "MID_LARGE_TECH",
+  "MATURE_SME",
+  "SAAS_ENTERPRISE_SOFTWARE",
+  "AI_NATIVE_APPLICATION",
+  "CONSUMER_TECH",
+  "GAME_CONTENT",
+  "FOREIGN_INTERNATIONAL_TEAM",
+  "TRADITIONAL_DIGITAL_INNOVATION",
+  "STARTUP_SCALEUP",
+  "UNKNOWN",
+]).describe(
+  "Search-coverage classification only. It helps detect result-set concentration and is not an employer-quality or market-distribution judgment.",
+);
+
+const discoveryCandidateSchema = z.object({
+  company: z.string().min(1).describe("Employer name."),
+  role: z.string().min(1).optional().describe("Exact role title."),
+  exactRole: z.string().min(1).optional().describe("Camel-case alias for exact role title."),
+  exact_role: z.string().min(1).optional().describe("Snake-case alias for exact role title."),
+  role_title: z.string().min(1).optional().describe("Search Execution alias for exact role title."),
+  external_job_id: z.string().optional(),
+  location: z.unknown().optional(),
+  officialSource: officialSourceSchema.optional(),
+  official_source: officialSourceSchema.optional(),
+  liveStatus: z.string().optional(),
+  live_status: z.string().optional(),
+  qualificationFacts: z.array(z.string()).optional(),
+  qualification_facts: z.array(z.string()).optional(),
+  deadline: z.unknown().optional(),
+  applicationRule: z.unknown().optional(),
+  application_rule: z.unknown().optional(),
+  provenance: z.array(z.record(z.string(), z.unknown())).optional(),
+  uncertainty: z.array(z.string()).optional(),
+  roleFamily: z.string().optional(),
+  role_family: z.string().optional(),
+  companyCoverageBucket: companyCoverageBucketSchema.optional(),
+  company_coverage_bucket: companyCoverageBucketSchema.optional(),
+  companyType: z.string().optional(),
+  company_type: z.string().optional(),
+  aiInvolvement: z.string().optional(),
+  ai_involvement: z.string().optional(),
+  whyMatched: z.unknown().optional(),
+  why_matched: z.unknown().optional(),
+  evidenceRefs: z.array(z.string()).optional(),
+  evidence_refs: z.array(z.string()).optional(),
+  risk: z.array(z.string()).optional(),
+}).passthrough().describe(
+  "One standardized external discovery candidate. company and one of role, exactRole, exact_role or role_title are required by runtime validation.",
+);
+
+const roleHypothesisSchema = z.object({
+  id: z.string(),
+  role_or_family: z.string(),
+  capability_root_refs: z.array(z.string()).optional(),
+  company_targets: z.array(z.string()).optional(),
+  search_terms: z.record(z.string(), z.unknown()).optional(),
+}).passthrough();
+
 const discoverySchema = z.object({
+  provider: z.enum(["EXTERNAL_WEB_DISCOVERY_HANDOFF"]).optional(),
+  providerRun: z.record(z.string(), z.unknown()).optional().describe(
+    "Optional external executor provenance such as executor, observed_at or search_id.",
+  ),
   capabilityProfile: z.record(z.string(), z.unknown()).optional(),
-  roleHypotheses: z.array(z.record(z.string(), z.unknown())).optional(),
-  candidates: z.array(z.record(z.string(), z.unknown())).optional(),
+  roleHypotheses: z.array(roleHypothesisSchema).optional().describe(
+    "Role-family hypotheses used to create the external-Web discovery handoff.",
+  ),
+  candidates: z.array(discoveryCandidateSchema).optional().describe(
+    "Standardized results returned by the external Web executor. Candidate-only result-ingest calls are accepted.",
+  ),
   locationScope: z.array(z.unknown()).optional(),
   companyTypes: z.array(z.string()).optional(),
-  candidateConstraints: z.record(z.string(), z.unknown()).optional(),
+  candidateConstraints: z.union([
+    z.record(z.string(), z.unknown()),
+    z.array(z.string()),
+  ]).optional(),
   marketScope: z.array(z.unknown()).optional(),
   inputRefs: z.array(z.string()).optional(),
   taxonomyRef: z.string().optional(),
-}).passthrough().optional();
+}).passthrough().describe(
+  "Market-discovery request or external result-ingest payload.",
+);
+
+const scanConfigCompatibilitySchema = z.object({
+  mode: scanModeSchema.optional(),
+  discovery: discoverySchema.optional(),
+}).strict().describe(
+  "Compatibility envelope for clients that expose one scanConfig object. It accepts only mode and discovery; configured source adapters, URLs and limits cannot be overridden.",
+);
+
+const normalizeToolRequest = ({ mode, discovery, scanConfig }) => {
+  if (mode && scanConfig?.mode && mode !== scanConfig.mode) {
+    throw new Error("conflicting-mode-input");
+  }
+  if (discovery && scanConfig?.discovery) {
+    throw new Error("conflicting-discovery-input");
+  }
+  return {
+    mode: mode ?? scanConfig?.mode ?? "hybrid_discovery",
+    discovery: discovery ?? scanConfig?.discovery,
+  };
+};
 
 const scanSummarySchema = z.object({
   scan_id: z.string().nullable().optional(),
@@ -220,7 +330,16 @@ const scanOutputSchema = z.object({
       screening_state: z.string().nullable().optional(),
       screening_reasons: z.unknown().optional(),
       source_url: z.string().nullable().optional(),
+      exact_role: z.string().nullable().optional(),
+      official_source: z.unknown().optional(),
+      live_status: z.string().nullable().optional(),
+      qualification_facts: z.unknown().optional(),
+      deadline: z.unknown().optional(),
+      application_rule: z.unknown().optional(),
+      provenance: z.unknown().optional(),
+      uncertainty: z.unknown().optional(),
       role_family: z.string().nullable().optional(),
+      company_coverage_bucket: z.string().nullable().optional(),
       ai_involvement: z.string().nullable().optional(),
       why_matched: z.unknown().optional(),
       evidence_refs: z.unknown().optional(),
@@ -252,6 +371,28 @@ const serverInfoOutputSchema = z.object({
   contextProvider: z.string(),
   contextPersistenceWrites: z.boolean(),
   supportedAdapters: z.record(z.string(), z.string()),
+  discoveryModes: z.array(z.string()),
+  genericDiscovery: z.object({
+    provider: z.string(),
+    execution: z.literal("EXTERNAL"),
+    builtInWebDiscovery: z.literal(false),
+    resultIngest: z.string(),
+    dedicatedAdaptersAreMarketBoundary: z.literal(false),
+    officialExactRoleVerification: z.string(),
+  }),
+  marketDiscoveryDefaults: z.object({
+    profileId: z.string(),
+    profileVersion: z.string(),
+    source: z.string(),
+    companySizePriority: z.literal("NEUTRAL"),
+    bigTechPriority: z.literal("NO_PRIORITY_BONUS"),
+    configuredAdapterPriority: z.literal("NO_PRIORITY_BONUS"),
+    familiarBrandPriority: z.literal("NO_PRIORITY_BONUS"),
+    companyCoverageBuckets: z.array(z.string()),
+    decisionPriority: z.array(z.string()),
+    locationOrdering: z.array(z.string()),
+    coverageSafeguard: z.literal("DISCOVERY_COVERAGE_IMBALANCE"),
+  }),
   configuredSourcePreset: z.string(),
   externalAction: z.boolean(),
   application: z.boolean(),
@@ -260,10 +401,10 @@ const serverInfoOutputSchema = z.object({
 
 export const createCareerMcpServer = () => {
   const server = new McpServer(
-    { name: "career-intelligence-remote", version: "0.2.8" },
+    { name: "career-intelligence-remote", version: "0.2.10" },
     {
       instructions:
-        "Read-only Career Intelligence scanning and discovery. career.scan_and_review supports configured_review, market_discovery and hybrid_discovery; configured_review keeps the current configured source preset, while discovery modes accept a bounded Capability Profile/Role Hypothesis handoff. Never treat triage as final Fit or submission authority.",
+        "Read-only Career Intelligence scanning and discovery. career.scan_and_review supports configured_review, market_discovery and hybrid_discovery. Configured adapters improve verification for known sources but do not define the market boundary. Market discovery uses public neutral defaults and accepts a caller-scoped market_discovery_profile. If returned results are materially concentrated in a configured head-company bucket without supporting market evidence, mark DISCOVERY_COVERAGE_IMBALANCE and request one bounded supplemental external-Web pass. This runtime has no built-in generic Web browser; market discovery uses an external-Web handoff and standardized result ingest. Never treat discovery or triage as final Fit or submission authority.",
       cacheHints: { "tools/list": { ttlMs: 60_000, cacheScope: "private" } },
     },
   );
@@ -273,7 +414,7 @@ export const createCareerMcpServer = () => {
     {
       title: "Get Career Intelligence server capabilities",
       description:
-        "Return read-only runtime boundaries, context-provider semantics and supported official source adapters. The server may read the local Career continuity snapshot but never writes it.",
+        "Return read-only runtime boundaries, configured official source adapters, discovery modes and the generic external-Web handoff capability. Dedicated adapters improve verification quality but do not define the discoverable market.",
       inputSchema: z.object({}),
       outputSchema: serverInfoOutputSchema,
       annotations: {
@@ -285,14 +426,47 @@ export const createCareerMcpServer = () => {
     },
     async () => asToolResult({
       service: "career-intelligence-remote",
-      version: "0.2.8",
+      version: "0.2.10",
       stateless: true,
-      contextProvider: "CURRENT_LOCAL_CONTEXT",
+      contextProvider: "CALLER_SCOPED_OR_HOST_CONFIGURED_CONTEXT",
       contextPersistenceWrites: false,
       supportedAdapters: {
         sap: "discovery-and-detail",
         tencent: "detail",
         kuaishou: "social-discovery-and-detail",
+      },
+      discoveryModes: ["configured_review", "market_discovery", "hybrid_discovery"],
+      genericDiscovery: {
+        provider: "EXTERNAL_WEB_DISCOVERY_HANDOFF",
+        execution: "EXTERNAL",
+        builtInWebDiscovery: false,
+        resultIngest: "career.scan_and_review.discovery.candidates",
+        dedicatedAdaptersAreMarketBoundary: false,
+        officialExactRoleVerification: "REQUIRED_WHERE_AVAILABLE",
+      },
+      marketDiscoveryDefaults: {
+        profileId: "PUBLIC_NEUTRAL_MARKET_DISCOVERY_PROFILE",
+        profileVersion: "0.2.10",
+        source: "PUBLIC_NEUTRAL_DEFAULT",
+        companySizePriority: "NEUTRAL",
+        bigTechPriority: "NO_PRIORITY_BONUS",
+        configuredAdapterPriority: "NO_PRIORITY_BONUS",
+        familiarBrandPriority: "NO_PRIORITY_BONUS",
+        companyCoverageBuckets: [
+          "LARGE_INTERNET_TECH",
+          "MID_LARGE_TECH",
+          "MATURE_SME",
+          "SAAS_ENTERPRISE_SOFTWARE",
+          "AI_NATIVE_APPLICATION",
+          "CONSUMER_TECH",
+          "GAME_CONTENT",
+          "FOREIGN_INTERNATIONAL_TEAM",
+          "TRADITIONAL_DIGITAL_INNOVATION",
+          "STARTUP_SCALEUP",
+        ],
+        decisionPriority: [],
+        locationOrdering: [],
+        coverageSafeguard: "DISCOVERY_COVERAGE_IMBALANCE",
       },
       configuredSourcePreset: "CURRENT_CONFIGURED_SOURCES_V01",
       externalAction: false,
@@ -305,12 +479,15 @@ export const createCareerMcpServer = () => {
     {
       title: "Scan public jobs and create Career review packets",
       description:
-        "Run one bounded read-only scan cycle using the current configured source preset. This tool cannot change adapters, source URLs, discovery queries or source limits. poolMode only changes which already-discovered candidates are retained in the visible pool; it never changes source scope. Current Career continuity is loaded from the local read-only context provider by default, with careerContext used only as a request-scoped overlay. The tool does not apply, log in, upload, edit CV/Portfolio, or write Career canonical state.",
+        "Run one bounded read-only scan/review cycle. configured_review preserves the configured adapter preset. market_discovery returns an external-Web discovery handoff and ingests standardized results for any company. hybrid_discovery combines both paths and deduplicates them. Dedicated adapters improve source-specific verification but never define the market boundary. Public defaults are company-size, big-tech, brand and adapter neutral; a caller may supply careerContext.market_discovery_profile. Returned-batch concentration can trigger DISCOVERY_COVERAGE_IMBALANCE plus one same-scope supplemental external-Web handoff. The tool does not browse by itself, apply, log in, upload, edit CV/Portfolio, or write Career canonical state.",
       inputSchema: z.object({
         poolMode: z.enum(["BROAD", "FOCUSED"]).default("BROAD"),
         careerContext: careerContextSchema.default({}),
-        mode: z.enum(["configured_review", "market_discovery", "hybrid_discovery"]).default("hybrid_discovery"),
-        discovery: discoverySchema,
+        mode: scanModeSchema.optional().describe(
+          "Requested routing mode. Omitted requests remain backward-compatible and default to hybrid_discovery.",
+        ),
+        discovery: discoverySchema.optional(),
+        scanConfig: scanConfigCompatibilitySchema.optional(),
         detailLevel: z.enum(["summary", "review", "full"]).default("review"),
       }),
       outputSchema: scanOutputSchema,
@@ -326,14 +503,16 @@ export const createCareerMcpServer = () => {
       careerContext,
       mode,
       discovery,
+      scanConfig,
       detailLevel,
     }) => {
       try {
+        const normalized = normalizeToolRequest({ mode, discovery, scanConfig });
         const result = await runCareerScan({
           careerContext,
           poolMode,
-          mode,
-          discovery,
+          mode: normalized.mode,
+          discovery: normalized.discovery,
         });
         return asToolResult(trimResult(result, detailLevel));
       } catch (error) {
@@ -404,7 +583,7 @@ export const startCareerMcpHttpServer = async ({
         response.end(JSON.stringify({
           ok: true,
           service: "career-intelligence-remote",
-          version: "0.2.8",
+          version: "0.2.10",
           stateless: true,
         }));
         return;
